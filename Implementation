@@ -1,0 +1,29 @@
+Points
+
+1. Patitioner Init:   
+    Both R and S (tin and tout)
+    PageCursor starting for both a,b
+    iterate through full and get offsets for each thread (based on equal partition).
+    split function call with the 2 PageCursors
+
+2. Compute function for each thread (gets the pagecursors for R, S, S-TableRoot):
+     Sort S  
+         iterate through tuples 
+         create a list of join keys
+         create map of key->tuple address
+         sort (list)
+         In place page construction
+     barrier()
+     Copy and Sort R
+         Iterate through tuples 
+         create a list of join keys
+         create map of key->tuple address
+         sort (list)
+         reconstruct pages (use setnext, pagebuffer initialization)
+         reconstruct pagecursor
+     Merge with S
+         make copy of S pagecursor
+         Iterate R and Iterate S
+         Output
+
+
