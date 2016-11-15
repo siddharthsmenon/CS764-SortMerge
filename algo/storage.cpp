@@ -50,6 +50,9 @@ void StoreCopy::buildCursor(PageCursor* t, int threadid, bool atomic)
 		realbuildCursor<false>(t, threadid);
 }
 
+
+
+
 template <bool atomic>
 void StoreCopy::realbuildCursor(PageCursor* t, int threadid)
 {
@@ -66,7 +69,7 @@ void StoreCopy::realbuildCursor(PageCursor* t, int threadid)
     HashTable hashtable;
     hashtable.init(_hashfn->buckets(), size, sbuild->getTupleSize());
     hashtables[threadid] = &hashtable;
-	while(b = (atomic ? t->atomicReadNext() : t->readNext())) {
+	while(b = t->readNext()) {
 		i = 0;
 		while(tup = b->getTupleOffset(i++)) {
 		  long long key = s->asLong(tup, ja2);
@@ -94,9 +97,7 @@ void StoreCopy::realbuildCursor(PageCursor* t, int threadid)
     	for(int i=0;i<tuples.size();i++) {
     		iter++;
     		void *tup = tuples[i];
-    		void* target = atomic ? 
-				hashtable.atomicAllocate(0) :
-				hashtable.allocate(0);
+    		void* target = hashtable.allocate(0);
 
     		sbuild->writeData(target, 0, s->calcOffset(tup, ja2));
     		if(iter<=5 && threadid == 0)
@@ -110,9 +111,10 @@ void StoreCopy::realbuildCursor(PageCursor* t, int threadid)
 
     	}
     }
+    /*
     cout<<threadid<<"/"<<iter<<endl;
 
-    HashTable::Iterator it = hashtable.createIterator();
+    /HashTable::Iterator it = hashtable.createIterator();
     hashtable.placeIterator(it, 0);
     //Create an empty space of nothreads hashtable pointers and then each thread will write its pointer to sorted S there
     iter = 0;
@@ -128,6 +130,7 @@ void StoreCopy::realbuildCursor(PageCursor* t, int threadid)
     }
     cout<<threadid<<"-"<<iter<<endl;
     cout<<"Number of 793973: "<<ctr<<endl;
+    */
  
 
 }
@@ -172,7 +175,10 @@ WriteTable* StoreCopy::probeCursor(PageCursor* t, int threadid, bool atomic, Wri
 template <bool atomic>
 WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* ret)
 {
-	if (ret == NULL) {
+	
+
+
+	/*if (ret == NULL) {
 		ret = new WriteTable();
 		ret->init(sout, outputsize);
 	}
@@ -247,6 +253,7 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
 		}
 	}
 	return ret;
+	*/
 }
 
 
