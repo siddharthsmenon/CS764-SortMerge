@@ -34,16 +34,18 @@ void BaseAlgo::init(
 	sbuild = new Schema();
 	s1 = new Schema();
 
-	sbuild->add(schema1->get(ja1));
+// ja2, sel2 in sbuild
+	sbuild->add(schema2->get(ja2));
 	for (vector<unsigned int>::iterator i1=sel1.begin(); i1!=sel1.end(); ++i1) {
 		pair<ColumnType, unsigned int> ct = schema1->get(*i1);
 		sout->add(ct);
-		sbuild->add(ct);
 		s1->add(ct);
 	}
 	
 	for (vector<unsigned int>::iterator i2=sel2.begin(); i2!=sel2.end(); ++i2) {
-		sout->add(s2->get(*i2));
+		pair<ColumnType, unsigned int> ct = s2->get(*i2);
+		sout->add(ct);
+		sbuild->add(ct);
 	}
 
 }

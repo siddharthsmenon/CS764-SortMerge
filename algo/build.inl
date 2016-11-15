@@ -27,6 +27,6 @@ void BuildIsPart<Super>::build(SplitResult tin, int threadid)
 template <typename Super>
 void BuildIsNotPart<Super>::build(SplitResult tin, int threadid)
 {
-	PageCursor* t = (*tin)[0];
+    PageCursor* t = (*tin)[0];
 	Super::buildCursor(t, threadid, true);
 }

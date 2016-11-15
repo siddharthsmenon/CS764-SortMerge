@@ -1,2 +1,3 @@
 *.o
 datagen/*.tbl
+algo/*.o

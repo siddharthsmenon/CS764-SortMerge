@@ -45,8 +45,6 @@ using namespace std;
 
 struct ThreadArg {
 	int threadid;
-	PageCursor* localRPageRoot;
-	PageCursor* localSPageRoot;
 };
 
 /* Those needed by stupid, ugly pthreads. */
@@ -57,7 +55,7 @@ HashFunction* hashfn;
 unsigned long long timer, timer2, timer3;
 PThreadLockCVBarrier* barrier;
 Lock joinresultlock;
-//Partitioner* partitioner, * partitioner2;
+Partitioner* partitioner, * partitioner2;
 Affinitizer aff;
 
 vector<unsigned int> createIntVector(const Setting& line) {
@@ -89,47 +87,31 @@ inline void probechkpt(void) {
 }
 
 void* compute(void* value) {
-	ThreadArg* arg = reinterpret_cast<ThreadArg*>(value);
-	int threadid = arg->threadid;
-	cout<<"start compute 1\n"<<flush;
-
-	PageCursor* localRPageRoot = arg->localRPageRoot;
-	PageCursor* localSPageRoot = arg->localSPageRoot;
-	vector<PageCursor *> tinList, toutList;
-	SplitResult tin = &tinList;
-	SplitResult tout = &toutList;
-	tin->push_back(localRPageRoot);
-	tout->push_back(localSPageRoot);
-cout<<"start compute 2\n"<<flush;
-	
-	
-	//int threadid = reinterpret_cast<ThreadArg*>(value)->threadid;
+	int threadid = reinterpret_cast<ThreadArg*>(value)->threadid;
 	aff.affinitize(threadid);
-cout<<"start compute 3\n"<<flush;
+
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) initchkpt();
-	//SplitResult tin = partitioner->split(threadid);
-	//SplitResult tout = partitioner2->split(threadid);
+	SplitResult tin = partitioner->split(threadid);
+	SplitResult tout = partitioner2->split(threadid);
 
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) partchkpt();
-	
-	joiner->build(tout, threadid);					// build
-cout<<"start compute 4\n"<<flush;
+	joiner->build(tin, threadid);					// build
+
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) buildchkpt();
-	//PageCursor* t = joiner->probe(tin, threadid);	// probe
+	PageCursor* t = joiner->probe(tout, threadid);	// probe
 
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) probechkpt();
 	joinresultlock.lock();
-	//joinresult.push_back(t);	// remember result
+	joinresult.push_back(t);	// remember result
 	joinresultlock.unlock();
-	cout<<"end compute \n"<<flush;
 
 	return 0;
 }
@@ -160,7 +142,7 @@ int main(int argc, char** argv) {
 		cout << "Loading configuration file... " << flush;
 		cfg.readFile(argv[1]);
 		datapath = (const char*) cfg.lookup("path");
-		bucksize = cfg.lookup("bucksize");
+		//bucksize = cfg.lookup("bucksize");
 
 		sin = Schema::create(cfg.lookup("build.schema"));
 		WriteTable wr1;
@@ -203,11 +185,10 @@ int main(int argc, char** argv) {
 
 		joiner = JoinerFactory::createJoiner(cfg);
 
-		/*partitioner = PartitionerFactory::createPartitioner(cfg, 
+		partitioner = PartitionerFactory::createPartitioner(cfg, 
 				cfg.lookup("partitioner.build"));
 		partitioner2 = PartitionerFactory::createPartitioner(cfg, 
 				cfg.lookup("partitioner.probe"));
-        */
 
 		cout << "ok" << endl;
 
@@ -222,30 +203,13 @@ int main(int argc, char** argv) {
 
 		/* tin, tout are loaded with data now */
 		cout << "Running join algorithm... " << flush;
-		//partitioner->init(tin);
-		//partitioner2->init(tout);
- 
-		vector<PageCursor*> rTableSplits = tin->split(nothreads);
-		vector<PageCursor*> sTableSplits = tout->split(nothreads);
-
-		cout<<"done 1"<< flush;
-
-		
-		cout<<"done 2" << flush;
-
-		cout<<"R table - number of splits: "<<rTableSplits.size()<<endl;
-		cout<<"S table - number of splits: "<<sTableSplits.size()<<endl;
-		cout<<"number of threads: "<<nothreads<<endl;
-  
-        
-
+		partitioner->init(tin);
+		partitioner2->init(tout);
 		joiner->init(tin->schema(), select1, joinattr1,
 				tout->schema(), select2, joinattr2);
-		cout<<"done 3" << flush;
-		
-		/*if (flatmemstr=="yes") {
+		if (flatmemstr=="yes") {
 			dynamic_cast<FlatMemoryJoiner*>(joiner)->custominit(tin, tout);
-		}*/
+		}
 		
 		joinresult.reserve(nothreads+1);
 		pthread_t* threadpool = new pthread_t[nothreads];
@@ -258,8 +222,6 @@ int main(int argc, char** argv) {
 
 		for (int i=0; i<nothreads; ++i) {
 			ta[i].threadid = i;
-            ta[i].localRPageRoot = rTableSplits[i];
-            ta[i].localSPageRoot = sTableSplits[i];
 			assert(!pthread_create(&threadpool[i], &attr, compute, &ta[i]));
 		}
 
@@ -302,8 +264,8 @@ int main(int argc, char** argv) {
 		// be nice, free some mem
 		wr1.close();
 		wr2.close();
-		//partitioner->destroy();
-		//partitioner2->destroy();
+		partitioner->destroy();
+		partitioner2->destroy();
 		for (vector<PageCursor*>::iterator i1=joinresult.begin(); 
 				i1!=joinresult.end(); ++i1) {
 			(*i1)->close();

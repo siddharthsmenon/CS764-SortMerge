@@ -116,6 +116,7 @@ class HashBase : public BaseAlgo {
 	protected:
 		HashFunction* _hashfn;
 		HashTable hashtable;
+		HashTable** hashtables;
 		int nthreads;
 		int outputsize;
 #ifdef OUTPUT_AGGREGATE

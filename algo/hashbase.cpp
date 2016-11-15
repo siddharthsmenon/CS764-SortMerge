@@ -22,6 +22,7 @@ HashBase::HashBase(const libconfig::Setting& cfg) : BaseAlgo(cfg) {
 	size = cfg["algorithm"]["buildpagesize"];
 	outputsize = cfg["bucksize"];
 	_hashfn = HashFactory::createHashFunction(cfg["hash"]);
+	hashtables = new HashTable*[nthreads];
 #ifdef OUTPUT_AGGREGATE
 	aggregator = new int[AGGLEN*nthreads];
 	for (int i=0; i<AGGLEN*nthreads; ++i) {

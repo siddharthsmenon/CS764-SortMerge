@@ -16,9 +16,13 @@
 */
 
 #include "algo.h"
-#ifdef VERBOSE
-#include <iostream>
+#include <algorithm>
+ #include <iostream>
 #include <iomanip>
+#include <vector>
+#include <map>
+#ifdef VERBOSE
+
 using namespace std;
 #endif
 
@@ -49,10 +53,89 @@ void StoreCopy::buildCursor(PageCursor* t, int threadid, bool atomic)
 template <bool atomic>
 void StoreCopy::realbuildCursor(PageCursor* t, int threadid)
 {
-	int i = 0;
+	
 	void* tup;
 	Page* b;
 	Schema* s = t->schema();
+
+	vector<long long> keys;
+	map<long long, vector<void *> > keyToTuple;
+	int i = 0;
+	int iter=0;
+    int priorcount=0;
+    HashTable hashtable;
+    hashtable.init(_hashfn->buckets(), size, sbuild->getTupleSize());
+    hashtables[threadid] = &hashtable;
+	while(b = (atomic ? t->atomicReadNext() : t->readNext())) {
+		i = 0;
+		while(tup = b->getTupleOffset(i++)) {
+		  long long key = s->asLong(tup, ja2);
+          if(key==793973) priorcount++;
+
+          if(keyToTuple.find(key) == keyToTuple.end()) {
+          	  vector<void *> temp;
+          	  temp.push_back(tup);
+          	  keyToTuple[key] = temp;
+		      keys.push_back(key);
+          } else {
+          	  keyToTuple[key].push_back(tup);
+          }
+          iter++;
+        }
+    }
+    cout<<threadid<<" "<<iter<<endl;
+
+    std::sort(keys.begin(), keys.end());
+
+        iter = 0;
+    for(int keyiter=0;keyiter<keys.size();keyiter++) {
+    	vector<void *> tuples = keyToTuple[keys[keyiter]];
+    	//cout<<keys[j]<<"\n";
+    	for(int i=0;i<tuples.size();i++) {
+    		iter++;
+    		void *tup = tuples[i];
+    		void* target = atomic ? 
+				hashtable.atomicAllocate(0) :
+				hashtable.allocate(0);
+
+    		sbuild->writeData(target, 0, s->calcOffset(tup, ja2));
+    		if(iter<=5 && threadid == 0)
+    			//cout<<threadid<<"..."<<s->prettyprint(tup, '|')<<"\n";
+
+			for (unsigned int j=0; j<sel2.size(); ++j)
+				sbuild->writeData(target,		// dest
+						j+1,	// col in output
+						s->calcOffset(tup, sel2[j]));	// src for this col
+
+
+    	}
+    }
+    cout<<threadid<<"/"<<iter<<endl;
+
+    HashTable::Iterator it = hashtable.createIterator();
+    hashtable.placeIterator(it, 0);
+    //Create an empty space of nothreads hashtable pointers and then each thread will write its pointer to sorted S there
+    iter = 0;
+    int ctr = 0;
+    while(tup = it.readnext()) {
+    	//if(iter < 5 && threadid == 0)
+    		//cout<<threadid<<":::::"<<sbuild->prettyprint(tup, '\t')<<endl;
+    	iter++;
+    	long long key = sbuild->asLong(tup, 0);
+    	if(key == 793973) {
+    		ctr++;
+    	}
+    }
+    cout<<threadid<<"-"<<iter<<endl;
+    cout<<"Number of 793973: "<<ctr<<endl;
+ 
+
+}
+     
+	    
+
+	/*
+	
 	unsigned int curbuc;
 	while(b = (atomic ? t->atomicReadNext() : t->readNext())) {
 		i = 0;
@@ -77,7 +160,7 @@ void StoreCopy::realbuildCursor(PageCursor* t, int threadid)
 
 		}
 	}
-}
+}*/
 
 WriteTable* StoreCopy::probeCursor(PageCursor* t, int threadid, bool atomic, WriteTable* ret)
 {
