@@ -23,7 +23,7 @@ void BaseAlgo::init(
 		Schema* schema1, vector<unsigned int> select1, unsigned int jattr1,
 		Schema* schema2, vector<unsigned int> select2, unsigned int jattr2) {
 	// copy to private space
-	s2 = schema2;
+	s1 = schema1;
 	sel1 = select1;
 	sel2 = select2;
 	ja1 = jattr1;
@@ -32,20 +32,24 @@ void BaseAlgo::init(
 	// generate output & build schema
 	sout = new Schema();
 	sbuild = new Schema();
-	s1 = new Schema();
+	//s1 = new Schema();
+	s2 = new Schema();
 
 // ja2, sel2 in sbuild
 	sbuild->add(schema2->get(ja2));
-	for (vector<unsigned int>::iterator i1=sel1.begin(); i1!=sel1.end(); ++i1) {
-		pair<ColumnType, unsigned int> ct = schema1->get(*i1);
-		sout->add(ct);
-		s1->add(ct);
-	}
+	
 	
 	for (vector<unsigned int>::iterator i2=sel2.begin(); i2!=sel2.end(); ++i2) {
-		pair<ColumnType, unsigned int> ct = s2->get(*i2);
+		pair<ColumnType, unsigned int> ct = schema2->get(*i2);
 		sout->add(ct);
 		sbuild->add(ct);
+		s2->add(ct);
+	}
+
+	for (vector<unsigned int>::iterator i1=sel1.begin(); i1!=sel1.end(); ++i1) {
+		pair<ColumnType, unsigned int> ct = s1->get(*i1);
+		sout->add(ct);
+		//s1->add(ct);
 	}
 
 }
@@ -54,7 +58,7 @@ void BaseAlgo::destroy() {
 	// XXX memory leak: can't delete, pointed to by output tables
 	// delete sout;
 	delete sbuild;
-	delete s1;
+	delete s2;
 }
 
 BaseAlgo::BaseAlgo(const libconfig::Setting& cfg) {

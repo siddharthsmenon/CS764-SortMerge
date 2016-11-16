@@ -48,8 +48,8 @@ void Affinitizer::affinitize(int threadid)
 	// NUMA 0, core 1 is on NUMA 1, core 2 on NUMA 0, etc.
 	//
 	int offset;
-	const int numanodes = 2;
-	const int corespernode = 12;
+	const int numanodes = 1;
+	const int corespernode = 2;
 
 	// Start on NUMA 0, then SMT on NUMA 0, then NUMA 1, then SMT NUMA 1.
 	//

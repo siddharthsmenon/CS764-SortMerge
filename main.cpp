@@ -121,15 +121,30 @@ cout<<"start compute 4\n"<<flush;
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) buildchkpt();
-	//PageCursor* t = joiner->probe(tin, threadid);	// probe
+	PageCursor* t = joiner->probe(tin, threadid);	// probe
 
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) probechkpt();
 	joinresultlock.lock();
-	//joinresult.push_back(t);	// remember result
+	joinresult.push_back(t);	// remember result
 	joinresultlock.unlock();
 	cout<<"end compute \n"<<flush;
+	if(threadid == 0) {
+		void* tup;
+		Page* b;
+		for(int i=0;i<joinresult.size();i++) {
+			PageCursor *t = joinresult[i];
+			Schema* s = t->schema();
+			while(b = t->readNext()) {
+				i = 0;
+				while(tup = b->getTupleOffset(i++)) {
+				  //long long key = s->asLong(tup, ja2);
+                   cout<<s->prettyprint(tup,'\t')<<flush;
+		        }
+		    }
+		}
+	}
 
 	return 0;
 }
@@ -218,6 +233,8 @@ int main(int argc, char** argv) {
 
 		wr2.load(datapath+outfilename, "|");
 
+		cout<<"main loading data done "<<flush<<endl;
+
 		cout << "ok" << endl;
 
 		/* tin, tout are loaded with data now */
@@ -256,6 +273,7 @@ int main(int argc, char** argv) {
 		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 		pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
+        cout<<"about to initialize threads "<<flush<<endl;
 		for (int i=0; i<nothreads; ++i) {
 			ta[i].threadid = i;
             ta[i].localRPageRoot = rTableSplits[i];
@@ -263,9 +281,13 @@ int main(int argc, char** argv) {
 			assert(!pthread_create(&threadpool[i], &attr, compute, &ta[i]));
 		}
 
+		cout<<"threads started "<<flush<<endl;
+
 		pthread_attr_destroy(&attr);
 		for (int i=0; i<nothreads; ++i)
 			assert(!pthread_join(threadpool[i], NULL));
+
+		cout<<"threads complete "<<flush<<endl;
 
 		delete barrier;
 		delete[] threadpool;
@@ -278,7 +300,7 @@ int main(int argc, char** argv) {
 		/* joinresult of type vector<PageCursor*> has the generated output */
 		// output for validation
 #ifdef DEBUG
-		cout << "Outputting code for validation... " << flush;
+		/*cout << "Outputting code for validation... " << flush;
 		ofstream foutput((datapath+outputfile).c_str());
 		for (vector<PageCursor*>::iterator i1=joinresult.begin(); 
 				i1!=joinresult.end(); ++i1) {
@@ -296,10 +318,12 @@ int main(int argc, char** argv) {
 		foutput << flush;
 		foutput.close();
 		cout << "ok" << endl;
+		*/
 		
 #endif
 
 		// be nice, free some mem
+		cout<<" about to close files "<<flush<<endl;
 		wr1.close();
 		wr2.close();
 		//partitioner->destroy();

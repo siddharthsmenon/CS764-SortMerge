@@ -81,8 +81,8 @@ class HashTable {
 				void* cur;
 				void* free;
 				void* next;
-				const unsigned int bucksize;
-				const unsigned int tuplesize;
+				unsigned int bucksize;
+				unsigned int tuplesize;
 		};
 
 		Iterator createIterator();

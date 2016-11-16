@@ -20,6 +20,7 @@
 
 void HashTable::init(unsigned int nbuckets, unsigned int bucksize, unsigned int tuplesize)
 {
+	nbuckets=1;
 	lock = new Lock[nbuckets];
 	bucket = (void**)new char[sizeof(void*) * nbuckets];
 	for (int i=0; i<nbuckets; ++i) {
