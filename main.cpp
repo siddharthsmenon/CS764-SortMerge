@@ -129,7 +129,7 @@ cout<<"start compute 4\n"<<flush;
 	joinresultlock.lock();
 	joinresult.push_back(t);	// remember result
 	joinresultlock.unlock();
-	cout<<"end compute \n"<<flush;
+	//cout<<"end compute \n"<<flush;
 	if(threadid == 0) {
 		void* tup;
 		Page* b;
@@ -140,7 +140,7 @@ cout<<"start compute 4\n"<<flush;
 				i = 0;
 				while(tup = b->getTupleOffset(i++)) {
 				  //long long key = s->asLong(tup, ja2);
-                   cout<<s->prettyprint(tup,'\t')<<flush;
+                   cout<<s->prettyprint(tup,'\t')<<endl<<flush;
 		        }
 		    }
 		}
@@ -383,3 +383,4 @@ int main(int argc, char** argv) {
 	delete[] ta;
 	return 0;
 }
+
