@@ -140,9 +140,10 @@ cout<<"start compute 4\n"<<flush;
 				i = 0;
 				while(tup = b->getTupleOffset(i++)) {
 				  //long long key = s->asLong(tup, ja2);
-                   cout<<s->prettyprint(tup,'\t')<<endl<<flush;
+                   			cout<<s->prettyprint(tup,'\t')<<endl<<flush;
 		        }
 		    }
+			cout<<endl;
 		}
 	}
 
