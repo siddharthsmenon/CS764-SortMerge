@@ -204,54 +204,56 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
     vector<long long> keys = sortResult.keys;
     map<long long, vector<void *> >keyToTuples = sortResult.keyToTuples; 
 
-/*
-    int keyiter = 0, tupleiter=0;
-    HashTable::Iterator iter[nthreads];
-
-    for(int i=0;i<nthreads;i++) {
-    	iter[i] = hashtables[i].createIterator();
-    	hashtables[i].placeIterator(iter[i],0);
-    	//iter[i] = &it;
-    }
-    */
     int rKeyIter = keys.size() - 1, rTupIndex=0;
     int joinentries = 0;
     for(int i = 0; i < nthreads; i++) {
     	HashTable::Iterator iter = hashtables[i].createIterator();
     	hashtables[i].placeIterator(iter, 0);
     	void *sTup = iter.readnext();
-    	long long rKey = keys[rKeyIter];
-    	long long sKey = sbuild->asLong(sTup, 0);
+    	long long rKey = -2;
+    	long long sKey = -1;
+    	if(sTup != NULL) {
+    		sKey = sbuild->asLong(sTup, 0);
+    	}
+    	if(rKeyIter >= 0) {
+    		rKey = keys[rKeyIter];
+    	}
     	rKeyIter = keys.size() - 1;
     	while(sTup != NULL && rKeyIter >= 0) {
     		if(rKey == sKey) {
     			vector<void *> rtuples = keyToTuples[rKey];
-    			for(int rTupIter = 0; rTupIter < rtuples.size(); rTupIter++) {
-    				void* rTup = rtuples[rTupIter];
-    				while(sTup != NULL && sKey == rKey) {
-						s2->copyTuple(tmp, sbuild->calcOffset(sTup,1));
+    			while(sTup != NULL && sKey == rKey) {
+					for(int rTupIter = 0; rTupIter < rtuples.size(); rTupIter++) {
+    					void* rTup = rtuples[rTupIter];
+    					s2->copyTuple(tmp, sbuild->calcOffset(sTup,1));
 			        	for (unsigned int k=0; k<sel1.size(); ++k)
 								sout->writeData(tmp,		// dest
 										s2->columns()+k,	// col in output
 										s1->calcOffset(rTup, sel1[k]));	// src for this col
 			        	ret->append(tmp);
-    					sTup = iter.readnext();
-    					if(sTup != NULL) {
-    						sKey = sbuild->asLong(sTup, 0);
-    					}
-    					joinentries++;
+			        	joinentries++;
     				}
+    				sTup = iter.readnext();
+					if(sTup != NULL) {
+						sKey = sbuild->asLong(sTup, 0);
+					}
     			}
     			rKeyIter--;
+    			if(rKeyIter >= 0) {
+    				rKey = keys[rKeyIter];
+    			}
     		} else if(rKey < sKey) {
     			sTup = iter.readnext();
-    			if(sTup != NULL)
+    			if(sTup != NULL) {
     				sKey = sbuild->asLong(sTup, 0);
-    		} else {
+    			}
+    		} else { //rKey > sKey
     			rKeyIter--;
-    			rKey = keys[rKeyIter];
+    			if(rKeyIter >= 0) {
+    				rKey = keys[rKeyIter];
+    			}
     		}
-    	} 
+    	}
     }
 
     //Create an empty space of nothreads hashtable pointers and then each thread will write its pointer to sorted S there
