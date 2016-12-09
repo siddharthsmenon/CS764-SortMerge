@@ -194,130 +194,97 @@ WriteTable* StoreCopy::probeCursor(PageCursor* t, int threadid, bool atomic, Wri
 template <bool atomic>
 WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* ret)
 {
-	//cout<<"starting real proble for thread "<<threadid<<endl<<flush;
 	 if(ret == NULL) {
 		ret = new WriteTable();
 		ret->init(sout, outputsize);
 	}
-    //cout<<"starting execution real proble for thread "<<threadid<<endl<<flush;
-	Schema* s = t->schema();	
+	Schema* s = t->schema();
+	char tmp[sout->getTupleSize()];	
     SortedDataInfo sortResult = getSortedDataInfoForPages(t, ja1, threadid);
     vector<long long> keys = sortResult.keys;
     map<long long, vector<void *> >keyToTuples = sortResult.keyToTuples; 
-    /*
-    if(threadid == 0) {
-		for(int i = 0; i < nthreads; i++) {
-	    	HashTable::Iterator it = hashtables[i].createIterator();
-	    	hashtables[i].placeIterator(it, 0);
-	    	void *sTup = it.readnext();
-	    	while(sTup != NULL) {
-		    	long long sKey = sbuild->asLong(sTup, 0);
-	    		cout<<"Thread ID"<< i <<"s key"<<sKey<<endl<<flush;
-	    		sTup = it.readnext();
-	    	}
-	    }
 
-	    for(int i = 0; i < keys.size(); i++) {
-	    	long long rKey = keys[i];
-	    	cout<<"Thread ID"<<i<<"r key"<<rKey<<endl<<flush;
-	    }
-    }
-
-*/
-
+/*
     int keyiter = 0, tupleiter=0;
     HashTable::Iterator iter[nthreads];
-    //iter = new HashTable::Iterator[nthreads];
-    /*
-    cout<<"no of threads"<<nthreads<<endl<<flush;
-    //cout<<"starting real proble hashtables init for thread "<<threadid<<endl<<flush;
-    */
+
     for(int i=0;i<nthreads;i++) {
     	iter[i] = hashtables[i].createIterator();
     	hashtables[i].placeIterator(iter[i],0);
     	//iter[i] = &it;
     }
-    /*
-    //cout<<threadid<<" keysize"<<keys.size()<<endl<<flush;
-    cout<<"finished hashtable loop real proble for thread "<<threadid<<endl<<flush;
-*/
-    HashTable::Iterator it = hashtables[threadid].createIterator();
-    hashtables[threadid].placeIterator(it, 0);
+    */
+    int rKeyIter = keys.size() - 1, rTupIndex=0;
+    int joinentries = 0;
+    for(int i = 0; i < nthreads; i++) {
+    	HashTable::Iterator iter = hashtables[i].createIterator();
+    	hashtables[i].placeIterator(iter, 0);
+    	void *sTup = iter.readnext();
+    	long long rKey = keys[rKeyIter];
+    	long long sKey = sbuild->asLong(sTup, 0);
+    	rKeyIter = keys.size() - 1;
+    	while(sTup != NULL && rKeyIter >= 0) {
+    		if(rKey == sKey) {
+    			vector<void *> rtuples = keyToTuples[rKey];
+    			for(int rTupIter = 0; rTupIter < rtuples.size(); rTupIter++) {
+    				void* rTup = rtuples[rTupIter];
+    				while(sTup != NULL && sKey == rKey) {
+						s2->copyTuple(tmp, sbuild->calcOffset(sTup,1));
+			        	for (unsigned int k=0; k<sel1.size(); ++k)
+								sout->writeData(tmp,		// dest
+										s2->columns()+k,	// col in output
+										s1->calcOffset(rTup, sel1[k]));	// src for this col
+			        	ret->append(tmp);
+    					sTup = iter.readnext();
+    					if(sTup != NULL) {
+    						sKey = sbuild->asLong(sTup, 0);
+    					}
+    					joinentries++;
+    				}
+    			}
+    			rKeyIter--;
+    		} else if(rKey < sKey) {
+    			sTup = iter.readnext();
+    			if(sTup != NULL)
+    				sKey = sbuild->asLong(sTup, 0);
+    		} else {
+    			rKeyIter--;
+    			rKey = keys[rKeyIter];
+    		}
+    	} 
+    }
+
     //Create an empty space of nothreads hashtable pointers and then each thread will write its pointer to sorted S there
 /*
-    void* tup;
-    if(threadid == 0) {
-    	for(int i = 0; i < 12; i++) {
-    		int ite = 0;
-    		int ctr = 0;
-    		while(tup = iter[i].readnext()) {
-		    	//if(iter < 5 && threadid == 0)
-		    		//cout<<threadid<<":::::"<<sbuild->prettyprint(tup, '\t')<<endl;
-		    	ite++;
-		    	long long key = sbuild->asLong(tup, 0);
-		    	if(key == 793973) {
-		    		ctr++;
-		    	}
-		    }
-	    	cout<<threadid<<"-"<<ite<<endl<<flush;
-	    	cout<<"Number of 793973: "<<ctr<<endl<<flush;
-    	}
-		    
-    }
-    
-*/
-     //cout<<"ending real proble hashtables init for thread "<<threadid<<endl<<flush;
-
-    //S
-    
-   // cout<<"starting real proble adding elts to queue init for thread "<<threadid<<endl<<flush;
-    priority_queue<pair<long long, pair<void *, int> >, vector<pair<long long, pair<void*, int> > >/*, greater< pair<long long, pair<void *, int> > >*/ > pq;
+    priority_queue<pair<long long, pair<void *, int> >, vector<pair<long long, pair<void*, int> > > > pq;
     for(int i=0;i<nthreads;i++) {
-    	//cout<<"about to access iter["<<i<<"].readnext()"<<endl<<flush;
     	void* tup = iter[i].readnext();
     	if(tup != NULL) {
     		long long key = sbuild->asLong(tup, 0);
-    		//cout<<"obtained key"<<flush;
     		pq.push(make_pair(key, make_pair(tup, i)));	
-    		//cout<<"added to pq initial"<<flush;
     	}
     }
-   // cout<<"ending real proble adding elts to queue init for thread "<<threadid<<endl<<flush;
-   // cout<<"queue size initial (should be 12) "<<pq.size()<<endl<<flush;
-     int counteltsinr = 0;
-     int counteltsins = 0;
+
 
     //R
-    int rKeyIter = keys.size() - 1, rTupIndex=0;
-    int te = 0;
-    int joinentries = 0;
 
-    //cout<<threadid<<"-"<<"minSKey: "<< pq.top().first<<"minRKey: "<<keys[0]<<"maxRKey: "<<keys[keys.size()-1];
+
     while(rKeyIter >= 0 && !pq.empty()) {
-    	//cout<<"MAIN COUNTS: "<<rKeyIter<<" "<<keys.size()<<" "<<pq.size()<<endl<<flush;
     	pair<long long, pair<void *, int> > ele;
     	ele = pq.top();
     	long long skey = ele.first;
     	void* stup, *rtup;
     	HashTable::Iterator it;
     	long long rkey = keys[rKeyIter];
-    	//cout<<threadid<<" "<<skey<<" "<<rkey<<endl<<flush;
-    	//if(te < 5) {
-    	//cout<<skey<<" "<<rkey<<endl<<flush;
-    	te++;
-    	//}
-    	//cout<<"check 1"<<endl<<flush;
+
         if(skey == rkey) {
-        	//cout<<"equal \n"<<flush;
         	vector<void *> rtuples = keyToTuples[rkey];
         	counteltsinr += rtuples.size();
         	vector<void *> stuples;
         	
             while(!pq.empty() && ele.first == rkey) {
-            	//cout<<"entering  inner while "<<pq.size()<<" thread"<<threadid<<endl<<flush;
             	stup = ele.second.first;
             	stuples.push_back(stup);
-            	cout<<"Poping" << skey<<endl<<flush;
             	pq.pop();
             	counteltsins++;
             	stup = iter[ele.second.second].readnext();
@@ -327,22 +294,17 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
             	if(!pq.empty())
             		ele = pq.top();
             }
-
-            //stuples.push_back(stup);
-            //pq.pop();	
+	
             stup = iter[ele.second.second].readnext();
             if(stup) {
         	    pq.push(make_pair(sbuild->asLong(stup, 0), make_pair(stup, ele.second.second)));
             }
-            cout<<"Stuples with key " << rkey<<stuples.size()<<endl<<flush;
             joinentries += stuples.size() * rtuples.size();
-            //cout<<"exit inner while"<<endl<<flush;
         	if(s2->getTupleSize()) {
         		for(int i = 0; i < rtuples.size(); i++) {
         			rtup = rtuples[i];
         			for(int j = 0; j < stuples.size(); j++) {
         				stup = stuples[j];
-        				char tmp[sout->getTupleSize()];
 						s2->copyTuple(tmp, sbuild->calcOffset(stup,1));
 			        	for (unsigned int k=0; k<sel1.size(); ++k)
 								sout->writeData(tmp,		// dest
@@ -353,12 +315,10 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
         		}
         	}
         	rKeyIter--;
-            //cout<<"check 2"<<endl<<flush;
         } else if(rkey > skey) {
         	rKeyIter--;
         	counteltsinr++;
         } else {
-        	//it = iter[ele.second.second];
         	stup = iter[ele.second.second].readnext();
         	pq.pop();
         	counteltsins++;
@@ -367,11 +327,9 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
         	}
         }
     }
-    cout<<"Equal matches: "<<joinentries<<endl<<flush;
-    /*
-    cout<<"Total R in threead "<<threadid<<": "<<counteltsinr<<endl<<flush;
-    cout<<"Total S in threead "<<threadid<<": "<<counteltsins<<endl<<flush;
     */
+    cout<<"Equal matches: "<<joinentries<<endl<<flush;
+
     return ret;
  
 }
