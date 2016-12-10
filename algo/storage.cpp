@@ -212,13 +212,13 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
     	void *sTup = iter.readnext();
     	long long rKey = -2;
     	long long sKey = -1;
+    	rKeyIter = keys.size() - 1;
     	if(sTup != NULL) {
     		sKey = sbuild->asLong(sTup, 0);
     	}
     	if(rKeyIter >= 0) {
     		rKey = keys[rKeyIter];
     	}
-    	rKeyIter = keys.size() - 1;
     	while(sTup != NULL && rKeyIter >= 0) {
     		if(rKey == sKey) {
     			vector<void *> rtuples = keyToTuples[rKey];
