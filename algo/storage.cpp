@@ -263,7 +263,6 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
             if(stup) {
         	    pq.push(make_pair(sbuild->asLong(stup, 0), make_pair(stup, ele.second.second)));
             }
-            joinentries += stuples.size() * rtuples.size();
         	if(s2->getTupleSize()) {
         		for(int i = 0; i < rtuples.size(); i++) {
         			rtup = rtuples[i];
@@ -276,6 +275,7 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
 										s2->columns()+k,	// col in output
 										s1->calcOffset(rtup, sel1[k]));	// src for this col
 			        	ret->append(tmp);
+			        	joinentries++;
         			}
         		}
         	}
