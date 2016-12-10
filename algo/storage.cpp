@@ -206,13 +206,6 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
 
     int rKeyIter = keys.size() - 1, rTupIndex=0;
     int joinentries = 0;
-    HashTable::Iterator iter = hashtables[0].createIterator();
-	hashtables[0].placeIterator(iter, 0);
-	void* sTup = iter.readnext();
-	while(sTup != NULL) {
-		cout<<"Skey"<<sbuild->asLong(sTup, 0);
-		sTup = iter.readnext();
-	}
     for(int i = 0; i < nthreads; i++) {
     	HashTable::Iterator iter = hashtables[i].createIterator();
     	hashtables[i].placeIterator(iter, 0);
@@ -227,7 +220,6 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
     		rKey = keys[rKeyIter];
     	}
     	while(sTup != NULL && rKeyIter >= 0) {
-    		cout<<"skey"<<sKey<<"rKey"<<rKey<<endl<<flush;
     		if(rKey == sKey) {
     			vector<void *> rtuples = keyToTuples[rKey];
     			while(sTup != NULL && sKey == rKey) {
