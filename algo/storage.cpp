@@ -292,7 +292,7 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
         	}
         }
     }
-    cout<<"Equal matches: "<<joinentries<<endl<<flush;
+    //cout<<"Equal matches: "<<joinentries<<endl<<flush;
 
     return ret;
  

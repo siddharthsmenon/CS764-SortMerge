@@ -91,7 +91,6 @@ inline void probechkpt(void) {
 void* compute(void* value) {
 	ThreadArg* arg = reinterpret_cast<ThreadArg*>(value);
 	int threadid = arg->threadid;
-	cout<<"start compute 1\n"<<flush;
 
 	PageCursor* localRPageRoot = arg->localRPageRoot;
 	PageCursor* localSPageRoot = arg->localSPageRoot;
@@ -100,12 +99,10 @@ void* compute(void* value) {
 	SplitResult tout = &toutList;
 	tin->push_back(localRPageRoot);
 	tout->push_back(localSPageRoot);
-cout<<"start compute 2\n"<<flush;
 	
 	
 	//int threadid = reinterpret_cast<ThreadArg*>(value)->threadid;
 	aff.affinitize(threadid);
-cout<<"start compute 3\n"<<flush;
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) initchkpt();
@@ -117,7 +114,6 @@ cout<<"start compute 3\n"<<flush;
 	if (threadid == 0) partchkpt();
 	
 	joiner->build(tout, threadid);					// build
-cout<<"start compute 4\n"<<flush;
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) buildchkpt();
@@ -130,6 +126,7 @@ cout<<"start compute 4\n"<<flush;
 	joinresult.push_back(t);	// remember result
 	joinresultlock.unlock();
 	//cout<<"end compute \n"<<flush;
+	/*
 	if(threadid == 0) {
 		void* tup;
 		Page* b;
@@ -140,12 +137,13 @@ cout<<"start compute 4\n"<<flush;
 				i = 0;
 				while(tup = b->getTupleOffset(i++)) {
 				  //long long key = s->asLong(tup, ja2);
-                   			cout<<s->prettyprint(tup,'\t')<<endl<<flush;
+                   	cout<<s->prettyprint(tup,'\t')<<endl<<flush;
 		        }
 		    }
 			cout<<endl;
 		}
 	}
+	*/
 
 	return 0;
 }
