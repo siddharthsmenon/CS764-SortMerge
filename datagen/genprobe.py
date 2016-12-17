@@ -3,6 +3,7 @@ import random
 # Generate 16x bigger probe side.
 #
 maxkeyval = 1*1024*1024;
+#1*1024*1024;
 
 for iteration in xrange(16):
 	values = range(1, maxkeyval+1)
