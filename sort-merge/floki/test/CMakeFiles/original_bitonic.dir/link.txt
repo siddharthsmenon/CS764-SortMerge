@@ -1,0 +1,1 @@
+/usr/bin/c++   -march=native    CMakeFiles/original_bitonic.dir/original_bitonic.cpp.o  -o original_bitonic -rdynamic -lpthread 

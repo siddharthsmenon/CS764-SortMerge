@@ -1,0 +1,1 @@
+/usr/bin/c++   -march=native    CMakeFiles/sort_simd.dir/bench/sort.cpp.o  -o sort_simd -rdynamic 

@@ -1,0 +1,1 @@
+/usr/bin/c++   -march=native    CMakeFiles/test_aa_sort.dir/test.cpp.o  -o test_aa_sort -rdynamic 

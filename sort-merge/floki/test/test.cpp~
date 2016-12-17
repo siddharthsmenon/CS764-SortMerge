@@ -1,0 +1,46 @@
+
+
+#include <algorithm>
+#include <limits>
+#include <vector>
+#include<iostream>
+#include <random>
+#include </home/siddharth/sort-merge-simd/bitonic-sort-simd/floki/floki/aa_sort.hpp>
+
+using namespace floki;
+
+using namespace boost::simd;
+
+using boost::tuples::tie;
+
+// snowhouse container equality check.  For unit testing only
+template <typename pack_t>
+static bool are_packs_equal(const pack_t &lhs, const pack_t &rhs)
+{
+    for (int i = 0; i < pack_t::static_size; ++i)
+        if (lhs[i] != rhs[i])
+            return false;
+
+    return true;
+}
+
+int main()
+{
+using pack_t = pack<int32_t, 4>;
+
+            std::vector<pack_t> values{ { 50, 40, 30, 20 },
+                                        { 10, 0, 60, 55 },
+                                        { 88, 22, 44, 96 },
+                                        { 24, 6, 4, 3 } };
+
+            std::vector<pack_t> sorted_values{ { 0, 3, 4, 6 },
+                                               { 10, 20, 22, 24 },
+                                               { 30, 40, 44, 50 },
+                                               { 55, 60, 88, 96 } };
+
+            tie(values[0], values[1], values[2], values[3])
+                = floki::detail::bitonic_sort_16(values[0], values[1],
+                                                 values[2], values[3]);
+            std::cout<<values[0]<<" "<<values[1]<<" "<<values[1]<<values[2];
+
+}
