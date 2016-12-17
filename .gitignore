@@ -1,3 +1,5 @@
 *.o
 datagen/*.tbl
 algo/*.o
+multijoin
+multijoin-serial
