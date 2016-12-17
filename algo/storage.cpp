@@ -17,11 +17,11 @@
 
 #include "algo.h"
 #include <algorithm>
- #include <iostream>
+#include <iostream>
 #include <iomanip>
 #include <vector>
 #include <map>
- #include <queue>
+#include <queue>
 #ifdef VERBOSE
 
 using namespace std;
@@ -63,7 +63,6 @@ void StoreCopy::buildCursor(PageCursor* t, int threadid, bool atomic)
 SortedDataInfo getSortedDataInfoForPages(PageCursor* t, int ja2, int threadid) {
 	void* tup;
 	Page* b;
-	//cout<<"start of sortdatainfopages function in threadid "<<threadid<<endl<<flush<<endl;
 	Schema* s = t->schema();
     SortedDataInfo ret;
 	vector<long long> keys;
@@ -76,7 +75,6 @@ SortedDataInfo getSortedDataInfoForPages(PageCursor* t, int ja2, int threadid) {
 		i = 0;
 		while(tup = b->getTupleOffset(i++)) {
 		  long long key = s->asLong(tup, ja2);
-//          if(key==793973) priorcount++;
 
           if(keyToTuple.find(key) == keyToTuple.end()) {
           	  vector<void *> temp;
@@ -89,11 +87,9 @@ SortedDataInfo getSortedDataInfoForPages(PageCursor* t, int ja2, int threadid) {
           iter++;
         }
     }
-   // cout<<threadid<<" "<<iter<<endl;
     std::sort(keys.begin(), keys.end());
     ret.keys = keys;
     ret.keyToTuples = keyToTuple;
-  //  cout<<"end of sortdatainfopages function in thread "<<threadid<<endl<<flush<<endl;
     return ret;
 
 }
@@ -102,21 +98,14 @@ SortedDataInfo getSortedDataInfoForPages(PageCursor* t, int ja2, int threadid) {
 template <bool atomic>
 void StoreCopy::realbuildCursor(PageCursor* t, int threadid)
 {
-  //cout<<"start of realbuildcursorfunction "<<flush<<endl;	
 
   Schema* s = t->schema();	
   SortedDataInfo sortResult = getSortedDataInfoForPages(t, ja2, threadid);
   vector<long long> keys = sortResult.keys;
   map<long long, vector<void *> >keyToTuple = sortResult.keyToTuples;
-
-//cout<<"creating hashtable for thread "<<threadid<<flush<<endl;
-  
-   //cout<<"ending hashtable for thread "<<threadid<<flush<<endl; 
     int iter = 0;
     for(int keyiter=0;keyiter<keys.size();keyiter++) {
-    	//cout<<"starting key number "<<keyiter<<" in threadid "<<threadid<<endl<<flush;
     	vector<void *> tuples = keyToTuple[keys[keyiter]];
-    	//cout<<keys[j]<<"\n";
     	for(int i=0;i<tuples.size();i++) {
     		iter++;
     		void *tup = tuples[i];
@@ -131,58 +120,9 @@ void StoreCopy::realbuildCursor(PageCursor* t, int threadid)
 
 
     	}
-    //	cout<<"Ending key number "<<keyiter<<" in threadid "<<threadid<<endl<<flush;
     }
-    //cout<<"end of realbuildcursorfunction for thread "<<threadid<<endl<<flush<<endl;	
-
-    /*
-    for(int i = 0; i < keys.size(); i++) {
-    	long long sKey = keys[i];
-    	cout<<"Thread ID"<<i<<"special key"<<sKey<<endl<<flush;
-    }
-	
-	HashTable::Iterator it = hashtables[threadid].createIterator();
-	hashtables[threadid].placeIterator(it, 0);
-	void *sTup = it.readnext();
-    while(sTup != NULL) {
-    	long long sKey = sbuild->asLong(sTup, 0);
-    	cout<<"THREAD ID"<< threadid <<"ITER special key"<<sKey<<endl<<flush;
-    	sTup = it.readnext();
-    }
-
- */
 
 }
-     
-	    
-
-	/*
-	
-	unsigned int curbuc;
-	while(b = (atomic ? t->atomicReadNext() : t->readNext())) {
-		i = 0;
-		while(tup = b->getTupleOffset(i++)) {
-			// find hash table to append
-			curbuc = _hashfn->hash(s->asLong(tup, ja1));
-			void* target = atomic ? 
-				hashtable.atomicAllocate(curbuc) :
-				hashtable.allocate(curbuc);
-
-#ifdef VERBOSE
-		cout << "Adding tuple with key " 
-			<< setfill('0') << setw(7) << s->asLong(tup, ja1)
-			<< " to bucket " << setfill('0') << setw(4) << curbuc << endl;
-#endifke
-
-			sbuild->writeData(target, 0, s->calcOffset(tup, ja1));
-			for (unsigned int j=0; j<sel1.size(); ++j)
-				sbuild->writeData(target,		// dest
-						j+1,	// col in output
-						s->calcOffset(tup, sel1[j]));	// src for this col
-
-		}
-	}
-}*/
 
 WriteTable* StoreCopy::probeCursor(PageCursor* t, int threadid, bool atomic, WriteTable* ret)
 {
@@ -256,171 +196,9 @@ WriteTable* StoreCopy::realprobeCursor(PageCursor* t, int threadid, WriteTable* 
     	}
     }
 
-    //Create an empty space of nothreads hashtable pointers and then each thread will write its pointer to sorted S there
-/*
-    priority_queue<pair<long long, pair<void *, int> >, vector<pair<long long, pair<void*, int> > > > pq;
-    for(int i=0;i<nthreads;i++) {
-    	void* tup = iter[i].readnext();
-    	if(tup != NULL) {
-    		long long key = sbuild->asLong(tup, 0);
-    		pq.push(make_pair(key, make_pair(tup, i)));	
-    	}
-    }
-
-
-    //R
-
-
-    while(rKeyIter >= 0 && !pq.empty()) {
-    	pair<long long, pair<void *, int> > ele;
-    	ele = pq.top();
-    	long long skey = ele.first;
-    	void* stup, *rtup;
-    	HashTable::Iterator it;
-    	long long rkey = keys[rKeyIter];
-
-        if(skey == rkey) {
-        	vector<void *> rtuples = keyToTuples[rkey];
-        	counteltsinr += rtuples.size();
-        	vector<void *> stuples;
-        	
-            while(!pq.empty() && ele.first == rkey) {
-            	stup = ele.second.first;
-            	stuples.push_back(stup);
-            	pq.pop();
-            	counteltsins++;
-            	stup = iter[ele.second.second].readnext();
-            	if(stup) {
-        	    	pq.push(make_pair(sbuild->asLong(stup, 0), make_pair(stup, ele.second.second)));
-            	}
-            	if(!pq.empty())
-            		ele = pq.top();
-            }
-	
-            stup = iter[ele.second.second].readnext();
-            if(stup) {
-        	    pq.push(make_pair(sbuild->asLong(stup, 0), make_pair(stup, ele.second.second)));
-            }
-            joinentries += stuples.size() * rtuples.size();
-        	if(s2->getTupleSize()) {
-        		for(int i = 0; i < rtuples.size(); i++) {
-        			rtup = rtuples[i];
-        			for(int j = 0; j < stuples.size(); j++) {
-        				stup = stuples[j];
-						s2->copyTuple(tmp, sbuild->calcOffset(stup,1));
-			        	for (unsigned int k=0; k<sel1.size(); ++k)
-								sout->writeData(tmp,		// dest
-										s2->columns()+k,	// col in output
-										s1->calcOffset(rtup, sel1[k]));	// src for this col
-			        	ret->append(tmp);
-        			}
-        		}
-        	}
-        	rKeyIter--;
-        } else if(rkey > skey) {
-        	rKeyIter--;
-        	counteltsinr++;
-        } else {
-        	stup = iter[ele.second.second].readnext();
-        	pq.pop();
-        	counteltsins++;
-        	if(stup) {
-    	    	pq.push(make_pair(sbuild->asLong(stup, 0), make_pair(stup, ele.second.second)));
-        	}
-        }
-    }
-    */
-    cout<<"Equal matches: "<<joinentries<<endl<<flush;
-
     return ret;
  
 }
-
-
-
-    
-
-
-	/*if (ret == NULL) {
-		ret = new WriteTable();
-		ret->init(sout, outputsize);
-	}
-
-	char tmp[sout->getTupleSize()];
-	void* tup1;
-	void* tup2;
-	Page* b2;
-	unsigned int curbuc, i;
-
-	HashTable::Iterator it = hashtable.createIterator();
-
-	while (b2 = (atomic ? t->atomicReadNext() : t->readNext())) {
-#ifdef VERBOSE
-		cout << "Working on page " << b2 << endl;
-#endif
-		i = 0;
-		while (tup2 = b2->getTupleOffset(i++)) {
-#ifdef VERBOSE
-			cout << "Joining tuple " << b2 << ":" 
-				<< setfill('0') << setw(6) << i 
-				<< " having key " << s2->asLong(tup2, ja2) << endl;
-#endif
-			curbuc = _hashfn->hash(s2->asLong(tup2, ja2));
-#ifdef VERBOSE
-			cout << "\twith bucket " << setfill('0') << setw(6) << curbuc << endl;
-#endif
-			hashtable.placeIterator(it, curbuc);
-
-#ifdef PREFETCH
-#warning Only works for 16-byte tuples!
-			hashtable.prefetch(_hashfn->hash(
-						*(unsigned long long*)(((char*)tup2)+32)
-						));
-			hashtable.prefetch(_hashfn->hash(
-						*(unsigned long long*)(((char*)tup2)+64)
-						));
-#endif
-
-			while (tup1 = it.readnext()) {
-				if (sbuild->asLong(tup1,0) != s2->asLong(tup2,ja2) ) {
-					continue;
-				}
-
-#if defined(OUTPUT_ASSEMBLE)
-				// copy payload of first tuple to destination
-				if (s1->getTupleSize()) 
-					s1->copyTuple(tmp, sbuild->calcOffset(tup1,1));
-
-				// copy each column to destination
-				for (unsigned int j=0; j<sel2.size(); ++j)
-					sout->writeData(tmp,		// dest
-							s1->columns()+j,	// col in output
-							s2->calcOffset(tup2, sel2[j]));	// src for this col
-#if defined(OUTPUT_WRITE_NORMAL)
-				ret->append(tmp);
-#elif defined(OUTPUT_WRITE_NT)
-				ret->nontemporalappend16(tmp);
-#endif
-#endif
-
-#if defined(OUTPUT_AGGREGATE)
-				aggregator[ (threadid * AGGLEN) +
-					+ (sbuild->asLong(tup1,0) & (AGGLEN-1)) ]++;
-#endif
-
-#if !defined(OUTPUT_AGGREGATE) && !defined(OUTPUT_ASSEMBLE)
-				__asm__ __volatile__ ("nop");
-#endif
-
-			}
-		}
-	}
-	return ret;
-	*/
-
-
-
-
 
 void StorePointer::init(
 		Schema* schema1, vector<unsigned int> select1, unsigned int jattr1,

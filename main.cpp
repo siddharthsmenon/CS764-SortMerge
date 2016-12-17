@@ -57,7 +57,6 @@ HashFunction* hashfn;
 unsigned long long timer, timer2, timer3;
 PThreadLockCVBarrier* barrier;
 Lock joinresultlock;
-//Partitioner* partitioner, * partitioner2;
 Affinitizer aff;
 
 vector<unsigned int> createIntVector(const Setting& line) {
@@ -91,7 +90,6 @@ inline void probechkpt(void) {
 void* compute(void* value) {
 	ThreadArg* arg = reinterpret_cast<ThreadArg*>(value);
 	int threadid = arg->threadid;
-	cout<<"start compute 1\n"<<flush;
 
 	PageCursor* localRPageRoot = arg->localRPageRoot;
 	PageCursor* localSPageRoot = arg->localSPageRoot;
@@ -100,24 +98,18 @@ void* compute(void* value) {
 	SplitResult tout = &toutList;
 	tin->push_back(localRPageRoot);
 	tout->push_back(localSPageRoot);
-cout<<"start compute 2\n"<<flush;
 	
 	
-	//int threadid = reinterpret_cast<ThreadArg*>(value)->threadid;
 	aff.affinitize(threadid);
-cout<<"start compute 3\n"<<flush;
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) initchkpt();
-	//SplitResult tin = partitioner->split(threadid);
-	//SplitResult tout = partitioner2->split(threadid);
 
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) partchkpt();
 	
 	joiner->build(tout, threadid);					// build
-cout<<"start compute 4\n"<<flush;
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) buildchkpt();
@@ -129,7 +121,8 @@ cout<<"start compute 4\n"<<flush;
 	joinresultlock.lock();
 	joinresult.push_back(t);	// remember result
 	joinresultlock.unlock();
-	//cout<<"end compute \n"<<flush;
+	/*
+	Uncomment this part to show join output
 	if(threadid == 0) {
 		void* tup;
 		Page* b;
@@ -140,12 +133,13 @@ cout<<"start compute 4\n"<<flush;
 				i = 0;
 				while(tup = b->getTupleOffset(i++)) {
 				  //long long key = s->asLong(tup, ja2);
-                   			cout<<s->prettyprint(tup,'\t')<<endl<<flush;
+                   	cout<<s->prettyprint(tup,'\t')<<endl<<flush;
 		        }
 		    }
 			cout<<endl;
 		}
 	}
+	*/
 
 	return 0;
 }
@@ -219,11 +213,6 @@ int main(int argc, char** argv) {
 
 		joiner = JoinerFactory::createJoiner(cfg);
 
-		/*partitioner = PartitionerFactory::createPartitioner(cfg, 
-				cfg.lookup("partitioner.build"));
-		partitioner2 = PartitionerFactory::createPartitioner(cfg, 
-				cfg.lookup("partitioner.probe"));
-        */
 
 		cout << "ok" << endl;
 
@@ -234,36 +223,17 @@ int main(int argc, char** argv) {
 
 		wr2.load(datapath+outfilename, "|");
 
-		cout<<"main loading data done "<<flush<<endl;
 
 		cout << "ok" << endl;
 
 		/* tin, tout are loaded with data now */
 		cout << "Running join algorithm... " << flush;
-		//partitioner->init(tin);
-		//partitioner2->init(tout);
  
 		vector<PageCursor*> rTableSplits = tin->split(nothreads);
 		vector<PageCursor*> sTableSplits = tout->split(nothreads);
 
-		cout<<"done 1"<< flush;
-
-		
-		cout<<"done 2" << flush;
-
-		cout<<"R table - number of splits: "<<rTableSplits.size()<<endl;
-		cout<<"S table - number of splits: "<<sTableSplits.size()<<endl;
-		cout<<"number of threads: "<<nothreads<<endl;
-  
-        
-
 		joiner->init(tin->schema(), select1, joinattr1,
 				tout->schema(), select2, joinattr2);
-		cout<<"done 3" << flush;
-		
-		/*if (flatmemstr=="yes") {
-			dynamic_cast<FlatMemoryJoiner*>(joiner)->custominit(tin, tout);
-		}*/
 		
 		joinresult.reserve(nothreads+1);
 		pthread_t* threadpool = new pthread_t[nothreads];
@@ -274,7 +244,6 @@ int main(int argc, char** argv) {
 		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 		pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
 
-        cout<<"about to initialize threads "<<flush<<endl;
 		for (int i=0; i<nothreads; ++i) {
 			ta[i].threadid = i;
             ta[i].localRPageRoot = rTableSplits[i];
@@ -282,13 +251,11 @@ int main(int argc, char** argv) {
 			assert(!pthread_create(&threadpool[i], &attr, compute, &ta[i]));
 		}
 
-		cout<<"threads started "<<flush<<endl;
 
 		pthread_attr_destroy(&attr);
 		for (int i=0; i<nothreads; ++i)
 			assert(!pthread_join(threadpool[i], NULL));
 
-		cout<<"threads complete "<<flush<<endl;
 
 		delete barrier;
 		delete[] threadpool;
@@ -327,8 +294,6 @@ int main(int argc, char** argv) {
 		cout<<" about to close files "<<flush<<endl;
 		wr1.close();
 		wr2.close();
-		//partitioner->destroy();
-		//partitioner2->destroy();
 		for (vector<PageCursor*>::iterator i1=joinresult.begin(); 
 				i1!=joinresult.end(); ++i1) {
 			(*i1)->close();
