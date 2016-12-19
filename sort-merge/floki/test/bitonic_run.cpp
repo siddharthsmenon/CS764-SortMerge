@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 #include <fstream>
+#include <algorithm>
 #include <math.h>
 #include <iostream>
 #include <omp.h>
@@ -16,8 +17,8 @@ using namespace boost::simd;
 
 using boost::tuples::tie;
 
-struct timeval startwtime, endwtime;
-double seq_time;
+struct timeval startwtime, endwtime, startstlsorttime, endstlsorttime, startqsorttime, endqsorttime;
+double seq_time, qsort_time, stlsort_time;
 
 
 int N,n,M;          
@@ -69,6 +70,9 @@ int asc( const void *a, const void *b ){
     return 1;
 }
 
+bool mycomparefunction (int * a,int * b) { return ( (*a) < (*b)); }
+
+
 static __inline__ unsigned long long rdtsc(void)
 {
   unsigned long long int x;
@@ -95,14 +99,31 @@ int main( int argc, char **argv ) {
     table1 = argv[4];
     table2 = argv[5];
     displayOutput = argv[6];
-
+    
     initA();
     initB();
+
+    initA();
+    gettimeofday( &startstlsorttime, NULL );
+    std::sort(a, a+N);
+    gettimeofday( &endstlsorttime, NULL );
+
+    initA();
+    gettimeofday( &startqsorttime, NULL );
+    qsort( a , N, sizeof( int ), asc );
+    gettimeofday( &endqsorttime, NULL );
+    
+    initA();
     gettimeofday( &startwtime, NULL );
     Psort();
     gettimeofday( &endwtime, NULL );
-    seq_time = (double)( ( endwtime.tv_usec - startwtime.tv_usec ) / 1.0e6 + endwtime.tv_sec - startwtime.tv_sec );
+    
+    qsort_time = (double)( ( endwtime.tv_usec - startwtime.tv_usec ) / 1.0e6 + endwtime.tv_sec - startwtime.tv_sec );
+    seq_time = (double)( ( endstlsorttime.tv_usec - startstlsorttime.tv_usec ) / 1.0e6 + endstlsorttime.tv_sec - startstlsorttime.tv_sec );
+    stlsort_time = (double)( ( endqsorttime.tv_usec - startqsorttime.tv_usec ) / 1.0e6 + endqsorttime.tv_sec - startqsorttime.tv_sec );
     printf( "Bitonic parallel recursive and %i threads wall clock time = %f\n", 1 << atoi( argv[ 3 ] ), seq_time );
+    printf( "Sequential C++ Sort and %i threads wall clock time = %f\n", 1 << atoi( argv[ 3 ] ), stlsort_time );
+    //printf( "Sequential Q sort and %i threads wall clock time = %f\n", 1 << atoi( argv[ 3 ] ), qsort_time );
    // cout<<endl;
    // for(int i=0;i<N;i++) cout<<a[i]<<" ";
     //  cout<<endl;
